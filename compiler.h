@@ -1,4 +1,5 @@
 #pragma once
+
 #include "tokenizer.h"
 #include <memory>
 #include <vector>
@@ -9,10 +10,7 @@ class Compiler {
 
         bool initialize(const std::string& path_to_bf_file);
 
-        void compile(const std::string& output);
-    
-    private:
-        void convertToAssembly(const std::string& output);
+        void compile();
 
     private:
         Tokenizer m_tokenizer;   

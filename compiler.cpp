@@ -2,6 +2,15 @@
 #include <iostream>
 #include <sstream>
 #include <stack>
+#include "utils.h"
+#include "tokens.h"
+#include <iomanip>
+
+using JittedFunction = void (*)(void);
+
+namespace {
+    constexpr int MEMORY_SIZE = 30000;
+}
 
 bool Compiler::initialize(const std::string& path_to_bf_file) {
     if(!this->m_tokenizer.initialize(path_to_bf_file)) {
@@ -16,112 +25,101 @@ bool Compiler::initialize(const std::string& path_to_bf_file) {
     return true;
 }
 
-void Compiler::convertToAssembly(const std::string& output) {
-    std::ofstream out_file(this->m_obj_file_name + ".s");
-    if (!out_file.is_open()) {
-        std::cerr << "Error: Could not open " << output << " for writing\n";
-        return;
-    }
+void Compiler::compile() {
+    CodeEmitter emitter;
+    
+    std::stack<size_t> open_bracket_stack;
 
-    std::stringstream asm_code;
-    std::stack<int> loop_stack;
-    int loop_counter = 0;
+    std::vector<uint8_t> memory(MEMORY_SIZE, 0);
 
-    // BSS section
-    asm_code << ".bss\n";
-    asm_code << ".align 16\n";
-    asm_code << "tape:\n";
-    asm_code << "    .space 30000\n";
+    emitter.EmitBytes({0x49, 0xBD});
+    emitter.EmitUint64((uint64_t)memory.data());
 
-    // Text section
-    asm_code << ".text\n";
-    asm_code << ".globl _start\n";
-    asm_code << "_start:\n";
-    asm_code << "    pushq %rbx\n";
-    asm_code << "    movq $tape, %rbx\n";
-
-    auto tokens = *(this->m_tokens);
-
-    for (const Tokens& token : tokens) {
+    for(size_t pc = 0; pc < (*m_tokens).size(); ++pc) {
+        auto token = (*m_tokens)[pc];
         switch (token) {
         case Tokens::MoveRight:
-            asm_code << "    incq %rbx\n";
+            emitter.EmitBytes({0x49, 0xFF, 0xC5});
             break;
         case Tokens::MoveLeft:
-            asm_code << "    decq %rbx\n";
+            emitter.EmitBytes({0x49, 0xFF, 0xCD});
             break;
         case Tokens::Increment:
-            asm_code << "    incb (%rbx)\n";
+            emitter.EmitBytes({0x41, 0x80, 0x45, 0x00, 0x01});
             break;
         case Tokens::Decrement:
-            asm_code << "    decb (%rbx)\n";
+            emitter.EmitBytes({0x41, 0x80, 0x6D, 0x00, 0x01});
             break;
         case Tokens::Print:
-            asm_code << "    movq $1, %rax\n";
-            asm_code << "    movq $1, %rdi\n";
-            asm_code << "    movq %rbx, %rsi\n";
-            asm_code << "    movq $1, %rdx\n";
-            asm_code << "    syscall\n";
+            emitter.EmitBytes({0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00});
+            emitter.EmitBytes({0x48, 0xC7, 0xC7, 0x01, 0x00, 0x00, 0x00});
+            emitter.EmitBytes({0x4C, 0x89, 0xEE});
+            emitter.EmitBytes({0x48, 0xC7, 0xC2, 0x01, 0x00, 0x00, 0x00});
+            emitter.EmitBytes({0x0F, 0x05});
             break;
         case Tokens::Input:
-            asm_code << "    movq $0, %rax\n";
-            asm_code << "    movq $0, %rdi\n";
-            asm_code << "    movq %rbx, %rsi\n";
-            asm_code << "    movq $1, %rdx\n";
-            asm_code << "    syscall\n";
+            emitter.EmitBytes({0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00});
+            emitter.EmitBytes({0x48, 0xC7, 0xC7, 0x00, 0x00, 0x00, 0x00});
+            emitter.EmitBytes({0x4C, 0x89, 0xEE});
+            emitter.EmitBytes({0x48, 0xC7, 0xC2, 0x01, 0x00, 0x00, 0x00});
+            emitter.EmitBytes({0x0F, 0x05});
             break;
         case Tokens::OpenBracket:
-            asm_code << "loop_start_" << loop_counter << ":\n";
-            asm_code << "    cmpb $0, (%rbx)\n";
-            asm_code << "    je loop_end_" << loop_counter << "\n";
-            loop_stack.push(loop_counter);
-            ++loop_counter;
+            emitter.EmitBytes({0x41, 0x80, 0x7d, 0x00, 0x00});
+
+            open_bracket_stack.push(emitter.get_size());
+
+            emitter.EmitBytes({0x0F, 0x84});
+            emitter.EmitUint32(0);
             break;
-        case Tokens::CloseBracket:
-            if (loop_stack.empty()) {
-                std::cerr << "Error: Unmatched ] in Brainfuck code\n";
-                out_file.close();
-                return;
+        case Tokens::CloseBracket: {
+
+        
+            if (open_bracket_stack.empty()) {
+                DIE << "unmatched closing ']' at pc=" << pc;
             }
-            asm_code << "    cmpb $0, (%rbx)\n";
-            asm_code << "    jne loop_start_" << loop_stack.top() << "\n";
-            asm_code << "loop_end_" << loop_stack.top() << ":\n";
-            loop_stack.pop();
+
+            size_t open_bracket_offset = open_bracket_stack.top();
+            open_bracket_stack.pop();
+
+            emitter.EmitBytes({0x41, 0x80, 0x7d, 0x00, 0x00});
+
+            // open_bracket_offset points to the JZ that jumps to this closing
+            // bracket. We'll need to fix up the offset for that JZ, as well as emit a
+            // JNZ with a correct offset back. Note that both [ and ] jump to the
+            // instruction *after* the matching bracket if their condition is
+            // fulfilled.
+
+            // Compute the offset for this jump. The jump start is computed from after
+            // the jump instruction, and the target is the instruction after the one
+            // saved on the stack.
+            size_t jump_back_from      = emitter.get_size() + 6;
+            size_t jump_back_to        = open_bracket_offset + 6;
+            uint32_t pcrel_offset_back = compute_relative_32bit_offset(jump_back_from, jump_back_to);
+
+            emitter.EmitBytes({0x0F, 0x85});
+            emitter.EmitUint32(pcrel_offset_back);
+
+            size_t jump_forward_from = open_bracket_offset + 6;
+            size_t jump_forward_to = emitter.get_size();
+            uint32_t pcrel_offset_forward = compute_relative_32bit_offset(jump_forward_from, jump_forward_to);
+            emitter.ReplaceUint32AtOffset(open_bracket_offset + 2, pcrel_offset_forward);
+        }
             break;
-        case Tokens::Comment:
+        default:
             break;
         }
     }
+    // The emitted code will be called as a function from C++; therefore it has to
+    // use the proper calling convention. Emit a 'ret' for orderly return to the
+    // caller.
+    emitter.EmitByte(0xC3);
 
-    if (!loop_stack.empty()) {
-        std::cerr << "Error: Unmatched [ in Brainfuck code\n";
-        out_file.close();
-        return;
-    }
+    std::vector<uint8_t> emitted_code = emitter.get_code();
 
-    asm_code << "    popq %rbx\n";
-    asm_code << "    movq $60, %rax\n";
-    asm_code << "    xorq %rdi, %rdi\n";
-    asm_code << "    syscall\n";
+    JitProgram jit_program(emitted_code);
+    JittedFunction func = (JittedFunction)jit_program.get_program_memory();
 
-    out_file << asm_code.str();
-    out_file.close();
-}
-
-void Compiler::compile(const std::string& output) {
-    this->convertToAssembly(output);
-
-    std::string assemby_cmd = "as " + this->m_obj_file_name + ".s -o " + this->m_obj_file_name + ".o";
-    std::string link_cmd = "ld " + this->m_obj_file_name + ".o -o " + output;
-    std::string remove_cmd = "rm -rf " + this->m_obj_file_name + ".s " + this->m_obj_file_name + ".o";
-
-    int assembly_result = std::system(assemby_cmd.c_str());
-    int link_result = std::system(link_cmd.c_str());
-    int remove_result = std::system(remove_cmd.c_str());
-
-    if (assembly_result != 0 || link_result != 0 || remove_result != 0) {
-        std::cerr << "Error: Compilation of " << output << " failed\n";
-        return;
-    }
+    func();
 }
 

@@ -22,7 +22,6 @@ std::unique_ptr<std::vector<Tokens>> Tokenizer::tokenize() {
     for(const char& ch : m_code) {
         switch (ch)
         {
-
             case '>':
                 tokens.push_back(Tokens::MoveRight);
                 break;

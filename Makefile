@@ -3,11 +3,11 @@ CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17
 
 # Source files
-SRCS = main.cpp compiler.cpp tokenizer.cpp
+SRCS = main.cpp compiler.cpp tokenizer.cpp utils.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 # Output binary
-TARGET = main
+TARGET = compiler
 
 # Default target
 all: $(TARGET)
