@@ -1,6 +1,9 @@
-#include "tokenizer.h"
+#include "../headers/tokenizer.h"
+
 #include <iostream>
 #include <fstream>
+
+#include "../headers/utils.h"
 
 bool Tokenizer::initialize(const std::string& path_to_bf_file) {
     this->m_tokens = std::make_unique<std::vector<Tokens>>();
@@ -8,7 +11,7 @@ bool Tokenizer::initialize(const std::string& path_to_bf_file) {
     std::ifstream input_file(path_to_bf_file);
 
     if(!input_file.is_open()) {
-        std::cout << "Failed to load .bf file";
+        std::cerr << "Failed to load .bf file" << std::endl;
         return false;
     }
 

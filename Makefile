@@ -2,12 +2,15 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17
 
+# Directory
+DIR = src/
+
 # Source files
-SRCS = main.cpp compiler.cpp tokenizer.cpp utils.cpp
+SRCS = main.cpp $(DIR)compiler.cpp $(DIR)tokenizer.cpp $(DIR)utils.cpp
 OBJS = $(SRCS:.cpp=.o)
 
 # Output binary
-TARGET = compiler
+TARGET = brain
 
 # Default target
 all: $(TARGET)

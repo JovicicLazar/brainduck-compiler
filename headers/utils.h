@@ -5,16 +5,14 @@
 #include <vector>
 #include <sstream>
 
+#define DIE internal::FatalLogMessage()
+
 namespace internal {
     class FatalLogMessage : public std::basic_ostringstream<char> {
     public:
         ~FatalLogMessage();
-    };
-    
-}
-    
-
-    #define DIE internal::FatalLogMessage()
+    };   
+} // namespace internal
 
 class JitProgram {
     public:
@@ -61,6 +59,5 @@ class CodeEmitter {
     private:
         std::vector<uint8_t> m_code;
 };
-
 
 uint32_t compute_relative_32bit_offset(size_t jump_from, size_t jump_to);

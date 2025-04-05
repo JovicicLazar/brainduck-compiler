@@ -1,8 +1,10 @@
 #pragma once
 
-#include "tokenizer.h"
 #include <memory>
 #include <vector>
+#include <string>
+
+#include "../headers/tokens.h"
 
 class Compiler {
     public:
@@ -13,8 +15,6 @@ class Compiler {
         void compile();
 
     private:
-        Tokenizer m_tokenizer;   
-
         std::unique_ptr<std::vector<Tokens>> m_tokens;    
 
         std::string m_obj_file_name;

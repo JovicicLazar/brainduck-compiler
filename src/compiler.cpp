@@ -1,10 +1,12 @@
-#include "compiler.h"
+#include "../headers/compiler.h"
+
 #include <iostream>
 #include <sstream>
 #include <stack>
-#include "utils.h"
-#include "tokens.h"
 #include <iomanip>
+
+#include "../headers/utils.h"
+#include "../headers/tokenizer.h"
 
 using JittedFunction = void (*)(void);
 
@@ -13,12 +15,14 @@ namespace {
 }
 
 bool Compiler::initialize(const std::string& path_to_bf_file) {
-    if(!this->m_tokenizer.initialize(path_to_bf_file)) {
-        std::cout << "Could not initialize tokenizer." << std::endl;
+    Tokenizer tokenizer;
+
+    if(!tokenizer.initialize(path_to_bf_file)) {
+        std::cerr << "Could not initialize tokenizer." << std::endl;
         return false;
     }
 
-    this->m_tokens = this->m_tokenizer.tokenize();
+    this->m_tokens = tokenizer.tokenize();
 
     this->m_obj_file_name = path_to_bf_file.substr(0, path_to_bf_file.find(".bf"));
 
@@ -73,8 +77,6 @@ void Compiler::compile() {
             emitter.EmitUint32(0);
             break;
         case Tokens::CloseBracket: {
-
-        
             if (open_bracket_stack.empty()) {
                 DIE << "unmatched closing ']' at pc=" << pc;
             }
@@ -110,6 +112,11 @@ void Compiler::compile() {
             break;
         }
     }
+
+    if(!open_bracket_stack.empty()) {
+        DIE << "Unmatched [ bracket at pc=" << open_bracket_stack.top();
+    }
+
     // The emitted code will be called as a function from C++; therefore it has to
     // use the proper calling convention. Emit a 'ret' for orderly return to the
     // caller.

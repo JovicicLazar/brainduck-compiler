@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "../headers/utils.h"
 #include <cassert>
 #include <cstring>
 #include <limits>
@@ -6,19 +6,17 @@
 #include <sys/mman.h>
 
 namespace internal {
-
     FatalLogMessage::~FatalLogMessage() {
       fprintf(stderr, "Fatal error: %s\n", str().c_str());
       exit(EXIT_FAILURE);
     }
-    
-    } // namespace internal
+} // namespace internal
 
 namespace {
     void* allocate_writable_memory(size_t size) {
         void* mem_ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         if(mem_ptr == MAP_FAILED) {
-            std::cerr << "Error allocating memory: mmap" << std::endl;
+            DIE << "Error allocating memory: mmap" << std::endl;
             return nullptr;
         }
         return mem_ptr;
@@ -26,7 +24,7 @@ namespace {
 
     bool make_memory_executable(void* memory, size_t size) {
         if(mprotect(memory, size, PROT_READ | PROT_EXEC) == -1) {
-            std::cerr << "Error making memory executable: mprotect" << std::endl;
+            DIE << "Error making memory executable: mprotect" << std::endl;
             return false;
         }
         return true;
@@ -40,14 +38,14 @@ JitProgram::JitProgram(const std::vector<uint8_t>& code)
     m_program_memory = allocate_writable_memory(m_program_size);
 
     if(m_program_memory == nullptr) {
-        std::cerr << "Couldn't allocate program memory" << std::endl;
+        DIE << "Couldn't allocate program memory" << std::endl;
         return;
     }
 
     memcpy(m_program_memory, code.data(), m_program_size);
 
     if(!make_memory_executable(m_program_memory, m_program_size)) {
-        std::cerr << "Couldn't make memory executable" << std::endl;
+        DIE << "Couldn't make memory executable" << std::endl;
         return;
     }
 
@@ -56,7 +54,7 @@ JitProgram::JitProgram(const std::vector<uint8_t>& code)
 JitProgram::~JitProgram() {
     if(m_program_memory != nullptr) {
         if(munmap(m_program_memory, m_program_size) == -1) {
-            std::cerr << "Error freeing the memory: munmap" << std::endl;
+            DIE << "Error freeing the memory: munmap" << std::endl;
         }
     }
 }
