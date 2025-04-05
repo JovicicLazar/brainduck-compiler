@@ -7,8 +7,6 @@ A simple Brainfuck Just-In-Time (JIT) compiler written in C++. This project take
 -   make
     
 ## How to run:
-- Build the code:
-  Run: `make`
-- Run the code:
-  Run: `brain <brainfuck_file.bf>`
+- Build the code: `make`
+- Run the code: `brain <brainfuck_file.bf>`
 	
