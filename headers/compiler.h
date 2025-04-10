@@ -15,7 +15,5 @@ class Compiler {
         void compile();
 
     private:
-        std::unique_ptr<std::vector<Tokens>> m_tokens;    
-
-        std::string m_obj_file_name;
+        std::unique_ptr<std::vector<Tokens>> m_tokens;
 };

@@ -24,8 +24,6 @@ bool Compiler::initialize(const std::string& path_to_bf_file) {
 
     this->m_tokens = tokenizer.tokenize();
 
-    this->m_obj_file_name = path_to_bf_file.substr(0, path_to_bf_file.find(".bf"));
-
     return true;
 }
 
@@ -106,8 +104,9 @@ void Compiler::compile() {
             size_t jump_forward_to = emitter.get_size();
             uint32_t pcrel_offset_forward = compute_relative_32bit_offset(jump_forward_from, jump_forward_to);
             emitter.ReplaceUint32AtOffset(open_bracket_offset + 2, pcrel_offset_forward);
-        }
+
             break;
+        }
         default:
             break;
         }

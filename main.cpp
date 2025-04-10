@@ -8,7 +8,6 @@
 constexpr uint8_t NUMBER_OF_ARGV = 2;
 
 int main(int argc, char* argv[]) {
-
     if(argc != NUMBER_OF_ARGV) {
         std::cout << "Usage: brain <file_name.bf>" << std::endl;
         return 0;
@@ -23,6 +22,6 @@ int main(int argc, char* argv[]) {
     }
 
     compiler.compile();
-
+    
     return 0;
 }
