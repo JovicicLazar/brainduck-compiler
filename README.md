@@ -10,4 +10,3 @@ A simple Brainfuck Just-In-Time (JIT) compiler written in C++. This project take
 - Build the code: `make`
 - Run the code: `./brain <brainfuck_file.bf>`
 - Clean everything: `make clean`
-	
