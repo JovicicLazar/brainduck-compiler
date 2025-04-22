@@ -1,19 +1,19 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "../headers/tokens.h"
 
 class Compiler {
-    public:
-        Compiler() = default;
+ public:
+  Compiler() = default;
 
-        bool initialize(const std::string& path_to_bf_file);
+  bool initialize(const std::string& path_to_bf_file);
 
-        void compile();
+  void compile();
 
-    private:
-        std::unique_ptr<std::vector<Tokens>> m_tokens;
+ private:
+  std::unique_ptr<std::vector<Tokens>> m_tokens;
 };
